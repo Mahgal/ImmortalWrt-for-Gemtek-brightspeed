@@ -1,0 +1,36 @@
+From: Jarvis <jarvis@khaan.si>
+Subject: [PATCH] net: airoha: declare airoha_ppe_flow_stats_available before first use
+
+9999-15 calls airoha_ppe_flow_stats_available() in
+airoha_ppe_debugfs_foe_show() but defines it as static further down
+the same file. Since Linux 6.8 the kernel build treats an implicit
+function declaration as a hard error
+(-Werror=implicit-function-declaration), so any build with
+CONFIG_DEBUG_FS=y fails here:
+
+  drivers/net/ethernet/airoha/airoha_ppe_debugfs.c:172: implicit
+  declaration of function 'airoha_ppe_flow_stats_available'
+  drivers/net/ethernet/airoha/airoha_ppe_debugfs.c:234: conflicting
+  types for 'airoha_ppe_flow_stats_available'
+
+Add a forward declaration before the first use; the definition is
+left untouched. Drop this patch if upstream fixes 9999-15 itself.
+
+Signed-off-by: Jarvis <jarvis@khaan.si>
+---
+--- a/drivers/net/ethernet/airoha/airoha_ppe_debugfs.c
++++ b/drivers/net/ethernet/airoha/airoha_ppe_debugfs.c
+@@ -37,6 +37,13 @@
+ 		seq_printf(m, ":%d", *dest_port);
+ }
+ 
++/* airoha_ppe_flow_stats_available() is defined below
++ * airoha_ppe_debugfs_foe_show(); declare it here so the first use does
++ * not trigger an implicit-function-declaration error, which has been a
++ * hard error since Linux 6.8 (-Werror=implicit-function-declaration).
++ */
++static bool airoha_ppe_flow_stats_available(struct airoha_ppe *ppe);
++
+ static int airoha_ppe_debugfs_foe_show(struct seq_file *m, void *private,
+ 				       bool bind)
+ {
